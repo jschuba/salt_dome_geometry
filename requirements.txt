@@ -1,0 +1,4 @@
+numpy
+matplotlib
+
+git+https://github.com/jschuba/Geometry3D
