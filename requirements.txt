@@ -1,4 +1,5 @@
 numpy
 matplotlib
+scipy
 
 git+https://github.com/jschuba/Geometry3D
