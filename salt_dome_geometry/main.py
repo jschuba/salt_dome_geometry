@@ -446,9 +446,13 @@ if __name__ == "__main__":
 
     domes = domes.drop(columns=['lower_interp_point_lower', 'lower_interp_point_upper', 'upper_interp_point_lower', 'upper_interp_point_upper'])
 
-    def resample_linestring(ls: shapely.LineString, start_closest_to=shapely.Point(-100000000, 0)) -> shapely.LineString:
+    def resample_linestring(ls: shapely.LineString, start_closest_to=shapely.Point(-100000000, 0), make_convex=False) -> shapely.LineString:
         # Resample each contour linestring so it has 100 points and the linestring starts on the west side.
-        new = [ls.interpolate(n/100 * ls.length) for n in range(101)]
+        if make_convex:
+            convex_hull = ls.convex_hull
+            new = [convex_hull.boundary.interpolate(n/100 * convex_hull.boundary.length) for n in range(101)]
+        else:
+            new = [ls.interpolate(n / 100 * ls.length) for n in range(101)]
         distances = [start_closest_to.distance(pt) for pt in new]
         start_index = np.argmin(distances)
         new_n = new[start_index:] + new[:start_index]
@@ -506,34 +510,65 @@ if __name__ == "__main__":
             new_row = pd.DataFrame(new_row)
             domes = pd.concat([domes, new_row])
 
+    def inward_offset(ls: shapely.geometry.LineString, offset_amount: float) -> shapely.geometry.LinearRing:
+        ls_p = shapely.geometry.Polygon(ls)
+        new_list = []
+        def normalize_and_reverse_if_not_inside(this: tuple, normal: tuple) -> tuple:
+            length = np.linalg.norm(normal)
+            normal = tuple(coord / length for coord in normal)
+            check1 = (this[0] + normal[0], this[1] + normal[1])
+            check2 = (this[0] - normal[0], this[1] - normal[1])
+            if ls_p.contains(shapely.Point(check1)):
+                return normal
+            elif ls_p.contains(shapely.Point(check2)):
+                return tuple(-x for x in normal)
+            else:
+                return None
+
+        for i in range(len(ls.coords)):
+            prev = ls.coords[i - 1 if i>0 else -1]
+            this = ls.coords[i]
+            next = ls.coords[i + 1 if i<len(ls.coords)-1 else 0]
+            if prev == this or this == next or next == prev:
+                continue
+            try:
+                normal1 = (prev[1] - this[1], prev[0] - this[0])
+                normal1 = normalize_and_reverse_if_not_inside(this, normal1)
+
+                normal2 = (next[1] - this[1], next[0] - this[0])
+                normal2 = normalize_and_reverse_if_not_inside(this, normal2)
+
+                if not (normal1 and normal2):
+                    print(f"Something wrong, {i=}")
+                    continue
+
+                normal = (normal1[0] + normal2[0], normal1[1] + normal2[1])
+                normal = normalize_and_reverse_if_not_inside(this, normal)
+
+                new = (this[0] + offset_amount*normal[0], this[1] + offset_amount*normal[1])
+                new_list.append(new)
+            except Exception as e:
+                pass
+        return shapely.geometry.LinearRing(new_list)
+
+
     for name, grp in domes.groupby('domeName'):
         plot_dome(grp)
 
 
+    a = shapely.LinearRing(ls)
+    b = inward_offset(a, 400)
+    b = shapely.offset_curve(a, distance=400)
 
 
-    dome_data = domes[(domes['domeName'] == 'bethel') & (domes['struct_ft'].isin((-7000, -5000)))].copy()
-    dome_data.geometry = dome_data.geometry.apply(resample_linestring)
+    plt.scatter(a.xy[0], a.xy[1], label='a')
+    plt.scatter(a.xy[0][0],a.xy[1][0], c='k')
 
+    plt.scatter(b.xy[0], b.xy[1], label='b')
+    plt.scatter(b.xy[0][0], b.xy[1][0], c='k')
 
-    plt.scatter(dome_data.geometry.iloc[0].xy[0], dome_data.geometry.iloc[0].xy[1], c='b')
-    plt.scatter(dome_data.geometry.iloc[0].xy[0][0], dome_data.geometry.iloc[0].xy[1][0], c='k')
-    plt.scatter(dome_data.geometry.iloc[1].xy[0], dome_data.geometry.iloc[1].xy[1], c='y')
-    plt.scatter(dome_data.geometry.iloc[1].xy[0][0], dome_data.geometry.iloc[1].xy[1][0], c='k')
+    plt.legend()
     plt.show()
-
-
-    def plot_dome(df: pd.DataFrame):
-        for i, row in df.iterrows():
-            ls = resample_linestring(row.geometry)
-            plt.scatter(ls.xy[0], ls.xy[1], label=row['struct_ft'])
-            plt.scatter(ls.xy[0][0],ls.xy[1][0], c='k')
-        plt.legend()
-        plt.show()
-
-
-    for name, grp in domes.groupby('domeName'):
-        plot_dome(grp)
 
 
 
