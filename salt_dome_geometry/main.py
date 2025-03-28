@@ -157,7 +157,7 @@ def make_hex_grid_of_circles(corner_1: geo.Point, corner_2: geo.Point, circle_ra
     return grid
 
 
-def make_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon, circle_radius: float, spacing: float,
+def  make_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon, circle_radius: float, spacing: float,
                                             y_offset: float = 0, x_offset: float = 0) -> list[geo.ConvexPolygon]:
     """
 
@@ -203,7 +203,7 @@ def make_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon, circle_radi
                 if all(poly.__contains__(p) for p in circ.points):
                     # Append a circle with higher resolution
                     grid.append(
-                        geo.Circle(geo.Point(x_circ, y, 0), normal=geo.z_unit_vector(), radius=circle_radius, n=100))
+                        geo.Circle(geo.Point(x_circ, y, 0), normal=geo.z_unit_vector(), radius=circle_radius, n=30))
     return grid
 
 
@@ -223,6 +223,13 @@ def grid_search_best_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon,
             if len(hex_grid) > best_number:
                 best_number = len(hex_grid)
                 best_hex_grid = hex_grid
+
+    if best_number == 1:
+        # Put the cavern in the middle
+        center = poly.center_point
+        circ = geo.Circle(geo.Point(center.x, center.y, 0), normal=geo.z_unit_vector(), radius=circle_radius, n=30)
+        best_hex_grid = [circ]
+
     if not best_hex_grid:
         raise AssertionError('No best hex grid found')
     return best_hex_grid

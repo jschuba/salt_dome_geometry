@@ -15,7 +15,6 @@ import matplotlib.cm
 
 from scipy.spatial import ConvexHull
 
-
 from salt_dome_geometry import dome_settings
 from salt_dome_geometry.shapely_helpers import *
 
@@ -47,7 +46,7 @@ class SaltDome:
         geo_col = self.geometry_col
 
         max_depth, min_depth = df[depth_col].max(), df[depth_col].min()
-        new_depths = np.arange(min_depth, max_depth+interval, interval)
+        new_depths = np.arange(min_depth, max_depth + interval, interval)
 
         new_contours = []
         for depth in new_depths:
@@ -79,7 +78,7 @@ class SaltDome:
                         .reset_index(drop=True))
         new_contours['interpolated'] = new_contours['interpolated'].fillna(False)
         self.contours = new_contours
-        
+
     def plot_contours(self, show=True, save_as=None):
         df = self.contours
         # Plot each contour in a different color, and prove that the linestrings are starting in the right places
@@ -114,7 +113,7 @@ class SaltDome:
             plt.show()
         return fig, ax
 
-    def plot_3d(self, show=True, save_as=None, figsize=(10,10)):
+    def plot_3d(self, show=True, save_as=None, figsize=(10, 10)):
         df = self.contours
         # Plot each contour in a different color, and prove that the linestrings are starting in the right places
         cmap = matplotlib.colormaps.get_cmap('summer')
@@ -131,10 +130,11 @@ class SaltDome:
             depth = row[self.depth_col]
             # Plot the points of the contour
             ax.scatter(ls.xy[0], ls.xy[1], [depth for _ in ls.xy[0]],
-                        color=color_list[i],
-                        label=depth)
+                       color=color_list[i],
+                       label=depth)
             # # Plot the contour as a line
-            ax.plot(list(ls.xy[0]) + [ls.xy[0][0]], list(ls.xy[1]) + [ls.xy[1][0]], [depth for _ in list(ls.xy[1]) + [ls.xy[1][0]]],
+            ax.plot(list(ls.xy[0]) + [ls.xy[0][0]], list(ls.xy[1]) + [ls.xy[1][0]],
+                    [depth for _ in list(ls.xy[1]) + [ls.xy[1][0]]],
                     color=color_list[i],
                     label=depth)
 
@@ -147,18 +147,17 @@ class SaltDome:
             plt.show()
         return fig, ax
 
-
     def __repr__(self):
         return f'SaltDome(dome_name={self.dome_name})'
 
 
 if __name__ == '__main__':
 
-
-    all_domes = gpd.read_file(r"C:\Users\jschu\PycharmProjects\salt_dome_geometry\salt_dome_geometry\dataverse_files\gis\txSaltDiapStruct_v01.shp")
+    all_domes = gpd.read_file(
+        r"C:\Users\jschu\PycharmProjects\salt_dome_geometry\salt_dome_geometry\dataverse_files\gis\txSaltDiapStruct_v01.shp")
 
     # Get only domes of interest
-    dome_names = ['mount_sylvan', 'bethel','hainesville','steen','boggy_creek']
+    dome_names = ['mount_sylvan', 'bethel', 'hainesville', 'steen', 'boggy_creek']
     dome_names = list(all_domes['domeName'].unique())
 
     domes = []
@@ -173,7 +172,6 @@ if __name__ == '__main__':
         dome.move_to_origin()
         # dome.plot_contours()
         fig, ax = dome.plot_3d(show=False, save_as=f"{dome_name} 3d {interval=}.png")
-        fig.close()
+        plt.show()
 
         domes.append(dome)
-
