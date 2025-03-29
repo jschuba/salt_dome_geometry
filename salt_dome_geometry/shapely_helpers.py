@@ -1,5 +1,6 @@
 import datetime
 import math
+from typing import Iterator, List, Tuple, Union
 
 import numpy as np
 
@@ -81,3 +82,119 @@ def offset_inner(ls: shapely.geometry.LinearRing | shapely.geometry.LineString,
         return inner
     return None
     # raise AssertionError("Something went wrong")
+
+def make_hex_grid_of_circles_inside_polygon(poly: shapely.Polygon, circle_radius: float, spacing: float,
+                                            y_offset: float = 0, x_offset: float = 0) -> list[shapely.Polygon]:
+    """
+
+    :param poly:
+    :param circle_radius:
+    :param spacing: # distance from cavern edge to edge
+    :return:
+    """
+    x1 = min(poly.exterior.xy[0])
+    y1 = min(poly.exterior.xy[1])
+    x2 = max(poly.exterior.xy[0])
+    y2 = max(poly.exterior.xy[1])
+    x_step = circle_radius * 2 + spacing
+    y_step = (circle_radius * 2 + spacing) * np.sin(np.deg2rad(60))
+
+    def make_y_start(offset: float) -> float:
+        center = (y1 + y2) / 2  # Find center of the poly shape
+        left_shift = y_step * (((y2 - y1) // y_step) / 2)  # how far to shift over, so we start near the left edge
+        centered_grid_start = center - left_shift  # this is where to start, so the grid is perfectly centered
+        start = centered_grid_start - abs(offset)  # Introduce an offset, so we can try multiple grid starts
+        return start
+
+    def make_x_start(offset: float) -> float:
+        center = (x1 + x2) / 2  # Find center of the polx shape
+        left_shift = x_step * (((x2 - x1) // x_step) / 2)  # how far to shift over, so we start near the left edge
+        centered_grid_start = center - left_shift  # this is where to start, so the grid is perfectlx centered
+        start = centered_grid_start - abs(offset)  # Introduce an offset, so we can trx multiple grid starts
+        return start
+
+    y_start = make_y_start(y_offset)
+    x_start = make_x_start(x_offset)
+    grid = []
+    for y_i, y in enumerate(np.arange(y_start, y2, y_step)):
+        for x in np.arange(x_start, x2, x_step):
+            if y_i % 2 == 0:
+                x_circ = x
+            else:
+                x_circ = x + (circle_radius * 2 + spacing) / 2
+            # print(x_circ, y)
+            # make a circle of 10 points for the check
+            circ = make_circle(shapely.Point(x_circ, y), radius=circle_radius, n=10)
+            if poly.contains(circ):
+                grid.append(circ)
+    return grid
+
+
+def yield_hex_grids_of_circles_inside_polygon(poly: shapely.Polygon, circle_radius: float, spacing: float,
+                                                        stepsize: int | float = 100) -> Iterator[List[shapely.Polygon]]:
+
+    for y_offset in np.arange(0, spacing + circle_radius, stepsize):
+        for x_offset in np.arange(0, spacing + circle_radius, stepsize):
+            hex_grid = make_hex_grid_of_circles_inside_polygon(poly,
+                                                               circle_radius=circle_radius,
+                                                               spacing=spacing,
+                                                               y_offset=y_offset,
+                                                               x_offset=x_offset)
+            yield hex_grid
+
+def grid_search_best_hex_grid_of_circles_inside_polygon(poly: shapely.Polygon, circle_radius: float, spacing: float,
+                                                        stepsize: int | float = 100) -> list[shapely.Polygon]:
+    print(f"Searching for best hexagonal grid with {stepsize=}")
+    best_number = 0
+    best_hex_grid = list()
+
+    for hex_grid in yield_hex_grids_of_circles_inside_polygon(poly, circle_radius, spacing, stepsize):
+        if len(hex_grid) > best_number:
+            best_number = len(hex_grid)
+            best_hex_grid = hex_grid
+
+    if best_number == 1:
+        # Put the cavern in the middle
+        center = poly.centroid
+        circ = make_circle((center.x, center.y), radius=circle_radius)
+        best_hex_grid = [circ]
+
+    if not best_hex_grid:
+        raise AssertionError('No best hex grid found')
+    return best_hex_grid
+
+
+def make_circle(center: shapely.Point | tuple[float, float], radius: float, n=10) -> shapely.Polygon:
+    center = shapely.Point(center)
+    l = list()
+    for i in range(n):
+        angle = i * 2 * math.pi / n
+        x_offset = math.cos(angle) * radius
+        y_offset = math.sin(angle) * radius
+        l.append(shapely.Point(center.x + x_offset, center.y + y_offset))
+    return shapely.Polygon(l)
+
+if __name__ == '__main__':
+    from matplotlib import pyplot as plt
+    circle = make_circle(shapely.Point(0, 0), 1, 1000)
+    assert (circle.area - math.pi * 1 * 1) < 10e-4
+
+    poly = shapely.Polygon([[-10, -10], [-10, 10],[10, 10], [10, -10]])
+
+    grid = make_hex_grid_of_circles_inside_polygon(poly, circle_radius=2, spacing=0)
+
+    fig, ax = plt.subplots(figsize=(20, 20))
+    ax.plot(poly.boundary.xy[0], poly.boundary.xy[1], 'k')
+    for g in grid:
+        ax.plot(g.boundary.xy[0], g.boundary.xy[1])
+    plt.axis('scaled')  # same x and y scaling
+    plt.show()
+
+    grid = grid_search_best_hex_grid_of_circles_inside_polygon(poly, circle_radius=2, spacing=0, stepsize=0.5)
+
+    fig, ax = plt.subplots(figsize=(20, 20))
+    ax.plot(poly.boundary.xy[0], poly.boundary.xy[1], 'k')
+    for g in grid:
+        ax.plot(g.boundary.xy[0], g.boundary.xy[1])
+    plt.axis('scaled')  # same x and y scaling
+    plt.show()

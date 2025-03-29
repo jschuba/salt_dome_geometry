@@ -25,7 +25,7 @@ geo.set_eps(1e-6)
 
 
 
-dome_cavern_intersections = pd.read_pickle("real_domes_and_caverns_250209_210243.pkl")
+dome_cavern_intersections = pd.read_pickle("../data/old/real_domes_and_caverns_250209_210243.pkl")
 
 
 def plot_3d(df, show=True, save_as=None, figsize=(10, 10)):

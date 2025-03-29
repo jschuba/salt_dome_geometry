@@ -262,7 +262,7 @@ if __name__ == "__main__":
             next_down_index = first_largest_index - 1 if first_largest_index > 0 else 0
             this_down_index = first_largest_index
             this_up_index = first_largest_index
-            next_up_index = first_largest_index + 1 if first_largest_index < len(intersection) - 1 else len(
+            next_up_index = first_rgest_index + 1 if first_largest_index < len(intersection) - 1 else len(
                 intersection) - 1
 
             max_height = dome_settings.max_cavern_height

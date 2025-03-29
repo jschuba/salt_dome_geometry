@@ -157,7 +157,7 @@ def make_hex_grid_of_circles(corner_1: geo.Point, corner_2: geo.Point, circle_ra
     return grid
 
 
-def  make_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon, circle_radius: float, spacing: float,
+def make_hex_grid_of_circles_inside_polygon(poly: geo.ConvexPolygon, circle_radius: float, spacing: float,
                                             y_offset: float = 0, x_offset: float = 0) -> list[geo.ConvexPolygon]:
     """
 
